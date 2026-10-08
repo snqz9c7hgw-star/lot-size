@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lot Size">
+<meta name="theme-color" content="#f1f3f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#07090d" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/favicon.png">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Lot Size</title>
+<style>
+/* Layout: native app — instrument switch in the bar, live position ticket (sticky) beside grouped input lists; on phone the ticket pins to the top */
+:root{
+  --bg:#f1f3f7; --card:#ffffff; --field:#f5f6fa; --ink:#0e131d; --muted:#667085; --faint:#98a1b2; --line:#e3e7ee;
+  --accent:#1d4ed8; --accent-ink:#ffffff; --accent-soft:#e7edfd;
+  --buy:#0a7d55; --buy-soft:#e3f5ed; --sell:#c0362f; --sell-soft:#fbe9e7; --warn:#8a5300; --warn-soft:#fff3dd;
+  --shadow:0 1px 2px rgb(15 20 30 / .05),0 4px 16px rgb(15 20 30 / .05);
+  --f-ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;
+  --f-fig:ui-rounded,"SF Pro Rounded",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#07090d; --card:#12151c; --field:#1a1e27; --ink:#eef1f6; --muted:#949db0; --faint:#6b7386; --line:#232835;
+  --accent:#7393ff; --accent-ink:#07090d; --accent-soft:#1a2340;
+  --buy:#38d19a; --buy-soft:#0f2a20; --sell:#ff7b72; --sell-soft:#2e1514; --warn:#f3b555; --warn-soft:#2a2112;
+  --shadow:0 0 0 1px rgb(255 255 255 / .02); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#07090d; --card:#12151c; --field:#1a1e27; --ink:#eef1f6; --muted:#949db0; --faint:#6b7386; --line:#232835;
+  --accent:#7393ff; --accent-ink:#07090d; --accent-soft:#1a2340;
+  --buy:#38d19a; --buy-soft:#0f2a20; --sell:#ff7b72; --sell-soft:#2e1514; --warn:#f3b555; --warn-soft:#2a2112;
+  --shadow:0 0 0 1px rgb(255 255 255 / .02); color-scheme:dark}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:15px;line-height:1.4;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+input{font:inherit}
+.tab{font-variant-numeric:tabular-nums}
+
+.app{max-width:1060px;margin:0 auto;padding-inline:16px;padding-block:14px 48px;display:grid;gap:16px}
+
+/* top bar */
+.bar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}
+.brand svg{width:34px;height:34px;flex:none;border-radius:9px}
+.brand b{display:block;font-size:18px;font-weight:700;letter-spacing:-.01em}
+.brand small{display:block;font-size:12px;color:var(--muted)}
+
+.seg{display:inline-grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--field);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
+.seg button{border:0;background:none;cursor:pointer;padding:6px 14px;border-radius:7px;font-size:13.5px;font-weight:600;color:var(--muted);white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgb(0 0 0 / .14)}
+.seg.lg button{padding:8px 20px;font-size:15px}
+:is(.seg button,.btn,.chip,.link,.ghost):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* layout */
+.main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,370px);gap:16px;align-items:start}
+.side{grid-column:2;grid-row:1;position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:grid;gap:12px}
+.form{grid-column:1;grid-row:1;display:grid;gap:18px;min-width:0}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+
+/* ticket */
+.hero{padding:16px 16px 14px;display:grid;gap:10px}
+.hero-top{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
+.hero-top b{color:var(--ink);font-weight:600}
+.pill{font-size:11px;font-weight:700;letter-spacing:.08em;padding:3px 9px;border-radius:999px;background:var(--field);color:var(--muted)}
+.pill.buy{background:var(--buy-soft);color:var(--buy)} .pill.sell{background:var(--sell-soft);color:var(--sell)}
+.lab{font-size:11.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lotrow{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.lot{display:flex;align-items:baseline;gap:8px;min-width:0}
+.lot .v{font-family:var(--f-fig);font-weight:700;font-size:clamp(46px,9vw,60px);line-height:.95;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.lot .u{font-size:17px;font-weight:600;color:var(--muted)}
+.btn{border:0;cursor:pointer;padding:10px 16px;border-radius:10px;background:var(--accent);color:var(--accent-ink);font-weight:600;font-size:14px;flex:none}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.sum{font-size:13.5px;color:var(--muted)}
+.sum b{color:var(--ink);font-weight:600}
+.msgs{display:grid;gap:8px}
+.msgs:empty{display:none}
+.msg{margin:0;padding:9px 11px;border-radius:9px;background:var(--warn-soft);color:var(--warn);font-size:13px;line-height:1.35}
+
+.stats{margin:0;padding:4px 16px}
+.stats div{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.stats div:last-child{border-bottom:0}
+.stats dt{font-size:13.5px;color:var(--muted)}
+.stats dd{margin:0;font-size:14.5px;font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.pos{color:var(--buy)}
+
+/* grouped lists */
+.group{display:grid;gap:7px}
+.gh{display:flex;justify-content:space-between;align-items:center;gap:10px;padding-inline:4px;min-height:28px}
+.gh h2{margin:0;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.list{overflow:hidden}
+.r{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 14px;min-height:50px;border-bottom:1px solid var(--line)}
+.r:last-child{border-bottom:0}
+.r .k{display:grid;gap:1px;min-width:0}
+.r .k span{font-size:15px}
+.r .k small{font-size:12px;color:var(--muted)}
+.in{display:flex;align-items:center;gap:4px;background:var(--field);border:1px solid transparent;border-radius:9px;padding:0 10px;width:min(170px,46vw);flex:none}
+.in:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.in i{font-style:normal;color:var(--faint);font-size:14px}
+.in input{border:0;background:none;outline:0;width:100%;min-width:0;padding:9px 0;text-align:right;font-size:16px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+.in input::placeholder{color:var(--faint);font-weight:400}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--card);cursor:pointer;border-radius:999px;padding:5px 11px;font-size:13px;font-weight:600;color:var(--muted)}
+.chip[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.ghost{border:1px solid var(--line);background:var(--card);cursor:pointer;border-radius:8px;padding:5px 11px;font-size:13px;font-weight:600;color:var(--accent)}
+.link{border:0;background:none;cursor:pointer;padding:0;color:var(--accent);font-size:12px;font-weight:600}
+.spec{display:flex;justify-content:space-between;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13.5px}
+.spec span:first-child{color:var(--muted)}
+.spec span:last-child{font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
+.danger{color:var(--sell)}
+.r .k label{font-size:15px}
+.live{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--faint);margin-right:5px;vertical-align:1px}
+.live.on{background:var(--buy);box-shadow:0 0 0 3px var(--buy-soft)}
+.live.manual{background:var(--accent)}
+.live.off{background:var(--warn)}
+.foot{font-size:12px;color:var(--muted);padding-inline:4px;max-width:68ch;margin:0}
+
+/* phone */
+@media (max-width:860px){
+  .main{grid-template-columns:minmax(0,1fr)}
+  .side{display:contents}
+  .hero{position:sticky;top:env(safe-area-inset-top,0px);z-index:4;grid-column:1;grid-row:1;box-shadow:0 8px 24px rgb(0 0 0 / .10)}
+  .stats-card{grid-column:1;grid-row:2}
+  .form{grid-row:3}
+  .bar{justify-content:space-between}
+  .bar .seg{width:100%}
+}
+@media (prefers-reduced-motion:no-preference){.seg button,.chip{transition:background .15s,color .15s}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="brand">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" fill="#0f1a33"/><rect x="14" y="22" width="8" height="22" rx="1.5" fill="#38d19a"/><rect x="17" y="14" width="2" height="38" fill="#38d19a"/><rect x="28" y="28" width="8" height="18" rx="1.5" fill="#ff7b72"/><rect x="31" y="20" width="2" height="32" fill="#ff7b72"/><rect x="42" y="16" width="8" height="24" rx="1.5" fill="#7393ff"/><rect x="45" y="10" width="2" height="38" fill="#7393ff"/></svg>
+      <div><b>Lot Size</b><small>IFX Brokers · MT5</small></div>
+    </div>
+    <div class="seg lg" id="inst" role="group" aria-label="Instrument">
+      <button type="button" data-v="nas" aria-pressed="true">NAS100</button>
+      <button type="button" data-v="us30" aria-pressed="false">US30</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <aside class="side">
+      <section class="card hero" aria-live="polite">
+        <div class="hero-top"><span><b id="tName">NAS100</b> · <span id="tSym">T100.ifx_m</span></span><span class="pill" id="tDir">—</span></div>
+        <div class="lab">Position size</div>
+        <div class="lotrow">
+          <div class="lot"><span class="v" id="lot">0.00</span><span class="u">lots</span></div>
+          <button type="button" class="btn" id="copy">Copy</button>
+        </div>
+        <div class="sum" id="sum">Enter a stop to size the trade.</div>
+        <div class="msgs" id="msgs"></div>
+      </section>
+      <section class="card stats-card">
+        <dl class="stats">
+          <div><dt>Planned risk</dt><dd id="sPlan">—</dd></div>
+          <div><dt>Risk at this size</dt><dd id="sAct">—</dd></div>
+          <div><dt>Stop used</dt><dd id="sDist">—</dd></div>
+          <div><dt>Value per point</dt><dd id="sVpp">—</dd></div>
+          <div><dt>Profit at TP</dt><dd id="sTp">—</dd></div>
+          <div><dt>Reward : risk</dt><dd id="sRR">—</dd></div>
+        </dl>
+      </section>
+    </aside>
+
+    <div class="form">
+      <section class="group">
+        <div class="gh"><h2>Trade</h2><div style="display:flex;gap:8px;align-items:center">
+          <div class="seg" id="slMode" role="group" aria-label="Stop entry">
+            <button type="button" data-v="pts" aria-pressed="true">Points</button>
+            <button type="button" data-v="px" aria-pressed="false">Prices</button>
+          </div>
+          <button type="button" class="ghost" id="clear">Clear</button></div>
+        </div>
+        <div class="card list" id="ptsList">
+          <label class="r"><span class="k"><span>Stop loss</span><small>Index points (1.00 on chart)</small></span><span class="in"><input id="slPts" inputmode="decimal" placeholder="0"><i>pts</i></span></label>
+          <label class="r"><span class="k"><span>Take profit</span><small>Optional</small></span><span class="in"><input id="tpPts" inputmode="decimal" placeholder="—"><i>pts</i></span></label>
+        </div>
+        <div class="card list" id="pxList" hidden>
+          <label class="r"><span class="k"><span>Entry price</span></span><span class="in"><input id="entry" inputmode="decimal" placeholder="0.00"></span></label>
+          <label class="r"><span class="k"><span>Stop loss price</span><small id="dirHint">Below entry = buy, above = sell</small></span><span class="in"><input id="sl" inputmode="decimal" placeholder="0.00"></span></label>
+          <label class="r"><span class="k"><span>Take profit price</span><small>Optional</small></span><span class="in"><input id="tp" inputmode="decimal" placeholder="—"></span></label>
+        </div>
+      </section>
+
+      <section class="group">
+        <div class="gh"><h2>Account</h2>
+          <div class="seg" id="ccy" role="group" aria-label="Account currency">
+            <button type="button" data-v="USD" aria-pressed="true">USD</button>
+            <button type="button" data-v="ZAR" aria-pressed="false">ZAR</button>
+          </div>
+        </div>
+        <div class="card list">
+          <div class="r" id="rateRow" hidden><span class="k"><label for="rate">USD/ZAR rate</label><small><span class="live" id="rateDot"></span><span id="rateStatus">Checking live rate…</span> <button type="button" class="link" id="rateLive">Refresh</button></small></span><label class="in"><i>R</i><input id="rate" inputmode="decimal" placeholder="0.00"></label></div>
+          <label class="r"><span class="k"><span>Balance</span></span><span class="in"><i class="cs">$</i><input id="bal" inputmode="decimal" placeholder="0.00"></span></label>
+          <div class="r">
+            <span class="k"><span>Risk per trade</span>
+              <span class="seg" id="riskMode" role="group" aria-label="Risk type" style="margin-top:6px;justify-self:start">
+                <button type="button" data-v="pct" aria-pressed="true">%</button>
+                <button type="button" data-v="amt" aria-pressed="false">Amount</button>
+              </span>
+            </span>
+            <label class="in"><i id="riskUnit">%</i><input id="risk" inputmode="decimal" placeholder="0"></label>
+          </div>
+          <div class="r" id="chipRow"><span class="k"><small>Quick pick</small></span>
+            <div class="chips" id="chips"><button type="button" class="chip" data-v="0.5">0.5%</button><button type="button" class="chip" data-v="1">1%</button><button type="button" class="chip" data-v="2">2%</button></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="group">
+        <div class="gh"><h2>Costs</h2></div>
+        <div class="card list">
+          <label class="r"><span class="k"><span>Spread buffer</span><small>Added to the stop · saved per instrument</small></span><span class="in"><input id="spread" inputmode="decimal" placeholder="0"><i>pts</i></span></label>
+          <label class="r"><span class="k"><span>Commission</span><small>Per lot, round turn, USD</small></span><span class="in"><i>$</i><input id="comm" inputmode="decimal" placeholder="0"></span></label>
+        </div>
+      </section>
+
+      <section class="group">
+        <div class="gh"><h2 id="specTitle">Broker spec · NAS100</h2></div>
+        <div class="card list">
+          <div class="spec"><span>Contract size</span><span id="spCon">10</span></div>
+          <div class="spec"><span>Price step</span><span id="spTick">0.01</span></div>
+          <div class="spec"><span>Volume min / step / max</span><span>0.01 / 0.01 / 50</span></div>
+          <div class="spec"><span>Stops level</span><span>10 (0.10 price)</span></div>
+          <label class="r"><span class="k"><span>Value per point, 1.00 lot</span><small><button type="button" class="link" id="vppReset">Reset to spec</button></small></span><span class="in"><i>$</i><input id="vpp" inputmode="decimal"></span></label>
+          <div class="r"><span class="k"><span>Reset everything</span><small>Restores all settings to defaults</small></span><button type="button" class="ghost danger" id="resetAll">Reset all</button></div>
+        </div>
+      </section>
+
+      <p class="foot">Lots round down to the 0.01 step, so actual risk never exceeds your plan unless the 0.01 minimum forces it. Assumes the stop fills at its price; gaps and news slippage can make a loss larger.</p>
+    </div>
+  </main>
+</div>
+
+<script>
+(function(){
+const INST={
+  nas:{name:'NAS100',sym:'T100.ifx_m',contract:10,step:'0.01',vpp:10},
+  us30:{name:'US30',sym:'WS30.ifx_m',contract:1,step:'0.10',vpp:1}
+};
+const VMIN=0.01,VSTEP=0.01,VMAX=50,STOPS=0.10;
+const TRADE=['slPts','tpPts','entry','sl','tp'];
+const DEF={inst:'nas',ccy:'USD',rate:'',rateAuto:true,bal:'10000',riskMode:'pct',risk:'1',slMode:'pts',slPts:'30',tpPts:'60',entry:'',sl:'',tp:'',comm:'0',spread:{nas:'',us30:''},vpp:{nas:'10',us30:'1'}};
+const KEY='ifx-lot-calc-v2';
+const clone=o=>JSON.parse(JSON.stringify(o));
+let S;
+try{let s=JSON.parse(localStorage.getItem(KEY)||'null');
+  // carry over settings saved by the first version (once)
+  const o=localStorage.getItem('ifx-lot-calc-migrated')?null:JSON.parse(localStorage.getItem('ifx-lot-calc-v1')||'null');
+  if(o){s=Object.assign({},o);const sp=String(o.spread??'');s.spread={nas:sp,us30:sp};localStorage.setItem('ifx-lot-calc-migrated','1');localStorage.setItem(KEY,JSON.stringify(s));}
+  if(!s)s={};S=Object.assign(clone(DEF),s);S.vpp=Object.assign({},DEF.vpp,s.vpp||{});S.spread=Object.assign({},DEF.spread,typeof s.spread==='object'&&s.spread?s.spread:{});}catch(e){S=clone(DEF);}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const $=id=>document.getElementById(id);
+const num=v=>{const n=parseFloat(String(v??'').replace(/[\s,]/g,''));return isFinite(n)?n:NaN};
+const f2=(n,d=2)=>n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const cs=()=>S.ccy==='ZAR'?'R':'$';
+let lastLots=0;
+
+function fill(){
+  ['rate','bal','risk','comm',...TRADE].forEach(k=>$(k).value=S[k]);
+  $('spread').value=S.spread[S.inst];$('vpp').value=S.vpp[S.inst];
+}
+['rate','bal','risk','comm',...TRADE].forEach(k=>$(k).addEventListener('input',e=>{S[k]=e.target.value;save();calc();}));
+$('spread').addEventListener('input',e=>{S.spread[S.inst]=e.target.value;save();calc();});
+$('vpp').addEventListener('input',e=>{S.vpp[S.inst]=e.target.value;save();calc();});
+$('vppReset').addEventListener('click',()=>{S.vpp[S.inst]=String(INST[S.inst].vpp);fill();save();calc();});
+
+function clearTrade(){TRADE.forEach(k=>S[k]='');fill();save();calc();}
+$('clear').addEventListener('click',()=>{clearTrade();(S.slMode==='pts'?$('slPts'):$('entry')).focus();});
+
+function bindSeg(id,key,after){
+  $(id).querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+    if(S[key]===b.dataset.v)return;S[key]=b.dataset.v;if(after)after();save();calc();}));
+}
+bindSeg('inst','inst',()=>{TRADE.forEach(k=>S[k]='');fill();});
+bindSeg('slMode','slMode');bindSeg('ccy','ccy',()=>setTimeout(()=>refreshRate(),0));
+bindSeg('riskMode','riskMode',()=>{ // convert value so the risk stays the same
+  const bal=num(S.bal),r=num(S.risk);
+  if(bal>0&&r>0)S.risk=S.riskMode==='amt'?String(+(bal*r/100).toFixed(2)):String(+(r/bal*100).toFixed(2));
+  fill();});
+$('chips').querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>{S.riskMode='pct';S.risk=c.dataset.v;fill();save();calc();}));
+
+let armed=null;
+$('resetAll').addEventListener('click',e=>{
+  const b=e.currentTarget;
+  if(!armed){b.textContent='Tap again to confirm';armed=setTimeout(()=>{b.textContent='Reset all';armed=null;},3000);return;}
+  clearTimeout(armed);armed=null;b.textContent='Reset all';
+  S=clone(DEF);try{localStorage.removeItem(KEY)}catch(err){}fill();calc();rateUI();
+});
+
+function press(id,val){$(id).querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===val)));}
+function setDir(d){const p=$('tDir');p.className='pill'+(d?' '+d:'');p.textContent=d==='buy'?'BUY':d==='sell'?'SELL':'—';}
+
+function calc(){
+  const I=INST[S.inst];
+  press('inst',S.inst);press('slMode',S.slMode);press('ccy',S.ccy);press('riskMode',S.riskMode);
+  $('chips').querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',String(S.riskMode==='pct'&&num(S.risk)===num(c.dataset.v))));
+  $('rateRow').hidden=S.ccy!=='ZAR';
+  document.querySelectorAll('.cs').forEach(e=>e.textContent=cs());
+  $('riskUnit').textContent=S.riskMode==='pct'?'%':cs();
+  $('ptsList').hidden=S.slMode!=='pts';$('pxList').hidden=S.slMode!=='px';
+  $('tName').textContent=I.name;$('tSym').textContent=I.sym;
+  $('specTitle').textContent='Broker spec · '+I.name;$('spCon').textContent=I.contract;$('spTick').textContent=I.step;
+
+  const msgs=[];
+  const bal=num(S.bal),r=num(S.risk),rate=num(S.rate),vpp=num(S.vpp[S.inst]);
+  const spread=Math.max(0,num(S.spread[S.inst])||0),comm=Math.max(0,num(S.comm)||0);
+  const zar=S.ccy==='ZAR',rateOk=!zar||rate>0;
+  const toAcct=usd=>zar?usd*rate:usd;
+  const money=usd=>rateOk?cs()+f2(toAcct(usd)):'—';
+  const pctOf=usd=>bal>0&&rateOk?f2(toAcct(usd)/bal*100)+'%':'';
+
+  const riskAcct=S.riskMode==='pct'?bal*r/100:r;
+  if(zar&&!rateOk)msgs.push(live.state==='loading'?'Getting the live USD/ZAR rate…':'Enter the USD/ZAR rate. These indices pay profit in USD, so the rate converts your rand risk.');
+  const riskUSD=zar?riskAcct/rate:riskAcct;
+
+  let dist=NaN,tpDist=NaN,dir=null;
+  if(S.slMode==='pts'){dist=num(S.slPts);tpDist=num(S.tpPts);}
+  else{
+    const e=num(S.entry),s=num(S.sl),t=num(S.tp);
+    if(isFinite(e)&&isFinite(s)&&e!==s){
+      dist=Math.abs(e-s);dir=e>s?'buy':'sell';
+      if(isFinite(t)){if(dir==='buy'?t>e:t<e)tpDist=Math.abs(t-e);else msgs.push('Take profit is on the wrong side of entry for a '+dir.toUpperCase()+'.');}
+    }
+  }
+  setDir(dir);
+  if(dist>0&&dist<STOPS)msgs.push('Stop is closer than the 0.10 broker minimum. MT5 will reject it.');
+  if(!(vpp>0))msgs.push('Set the value per point under Broker spec.');
+
+  const eff=dist+spread,perLot=eff*vpp+comm;
+  const valid=riskUSD>0&&dist>0&&vpp>0&&isFinite(perLot);
+  let lots=0;
+  if(valid){
+    const raw=riskUSD/perLot;
+    lots=Math.floor(raw/VSTEP+1e-9)*VSTEP;
+    if(lots>VMAX){lots=VMAX;msgs.push('Capped at the 50 lot order maximum. Split into orders to reach '+f2(raw)+' lots.');}
+    if(lots<VMIN){lots=0;msgs.push('Risk is too small for this stop. The 0.01 minimum would risk '+money(VMIN*perLot)+(pctOf(VMIN*perLot)?' ('+pctOf(VMIN*perLot)+')':'')+'.');}
+  }
+  lastLots=lots;
+  $('lot').textContent=f2(lots);
+  $('copy').disabled=!(lots>0);
+
+  const act=lots*perLot;
+  if(lots>0){
+    let s='Risking <b>'+money(act)+'</b>'+(pctOf(act)?' · '+pctOf(act):'');
+    if(tpDist>0)s+=' · <b>'+f2(tpDist/eff)+'R</b>';
+    $('sum').innerHTML=s;
+  }else $('sum').textContent=!(dist>0)?'Enter a stop to size the trade.':!(riskUSD>0)?'Enter your balance and risk.':'No valid size for these inputs.';
+
+  const d='—';
+  $('sPlan').textContent=riskAcct>0&&rateOk?cs()+f2(riskAcct)+(S.riskMode==='amt'&&bal>0?' · '+f2(riskAcct/bal*100)+'%':''):d;
+  $('sAct').textContent=lots>0?money(act):d;
+  $('sDist').textContent=dist>0?f2(dist)+(spread?' + '+f2(spread):'')+' pts':d;
+  $('sVpp').textContent=vpp>0?(lots>0?money(lots*vpp)+' / pt':'$'+f2(vpp)+' / pt per lot'):d;
+  if(lots>0&&tpDist>0){$('sTp').innerHTML='<span class="pos">'+money(lots*(tpDist*vpp-comm))+'</span>';}else $('sTp').textContent=d;
+  $('sRR').textContent=tpDist>0&&eff>0?f2(tpDist/eff)+' R':d;
+  $('msgs').innerHTML=msgs.map(m=>'<p class="msg">'+m+'</p>').join('');
+}
+
+// ---- live USD/ZAR ----
+let live={state:'idle',at:null};
+const SOURCES=[
+  ['https://api.coinbase.com/v2/exchange-rates?currency=USD',j=>+j.data.rates.ZAR],
+  ['https://open.er-api.com/v6/latest/USD',j=>+j.rates.ZAR]
+];
+async function getRate(){
+  for(const [u,pick] of SOURCES){
+    try{
+      const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),6000);
+      const r=await fetch(u,{cache:'no-store',signal:ctl.signal});clearTimeout(t);
+      if(!r.ok)continue;
+      const v=pick(await r.json());
+      if(v>5&&v<100)return v;
+    }catch(e){}
+  }
+  return null;
+}
+function rateUI(){
+  const dot=$('rateDot'),st=$('rateStatus'),btn=$('rateLive');
+  if(!S.rateAuto){dot.className='live manual';st.textContent='Manual rate';btn.textContent='Use live rate';return;}
+  if(live.state==='loading'){dot.className='live';st.textContent='Updating…';btn.textContent='Refresh';return;}
+  if(live.state==='ok'){dot.className='live on';st.textContent='Live · '+live.at.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});btn.textContent='Refresh';return;}
+  dot.className='live off';st.textContent=num(S.rate)>0?'Offline · using last rate':'Live rate unavailable · enter it';btn.textContent='Retry';
+}
+let busy=false;
+async function refreshRate(force){
+  if(S.ccy!=='ZAR'||busy)return;
+  if(!S.rateAuto&&!force)return;
+  busy=true;live.state='loading';rateUI();calc();
+  const v=await getRate();busy=false;
+  if(v){live={state:'ok',at:new Date()};if(S.rateAuto){S.rate=v.toFixed(4);$('rate').value=S.rate;save();}}
+  else live={state:'fail',at:null};
+  rateUI();calc();
+}
+$('rate').addEventListener('input',()=>{S.rateAuto=false;save();rateUI();});
+$('rateLive').addEventListener('click',()=>{S.rateAuto=true;save();refreshRate(true);});
+setInterval(()=>{if(document.visibilityState==='visible')refreshRate();},60000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refreshRate();});
+
+$('copy').addEventListener('click',e=>{
+  if(!(lastLots>0))return;const b=e.currentTarget,t=f2(lastLots);
+  const done=()=>{b.textContent='Copied';setTimeout(()=>b.textContent='Copy',1200);};
+  const sel=()=>{const r=document.createRange();r.selectNodeContents($('lot'));const s=getSelection();s.removeAllRanges();s.addRange(r);};
+  try{navigator.clipboard.writeText(t).then(done,sel);}catch(err){sel();}
+});
+fill();calc();rateUI();refreshRate();
+})();
+</script>
+<script>
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
